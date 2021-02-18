@@ -3,7 +3,7 @@ gURL is a tool to transfer data from or to a server, using one of the supported 
 
 ## options 
 ```
-Usage: curl [options...] <url>
+Usage: gurl [options...] <url>
      --abstract-unix-socket <path> Connect via abstract Unix domain socket
      --alt-svc <file name> Enable alt-svc with this cache file
      --anyauth       Pick any authentication method
