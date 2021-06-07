@@ -9,9 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # build and publish in parallel: linux/386, linux/amd64, windows/386, windows/amd64, darwin/386, darwin/amd64 
         goos: [linux, windows, darwin]
-        goarch: ["386", amd64]
+        goarch: [amd64]
     steps:
     - uses: actions/checkout@v2
     - uses: wangyoucao577/go-release-action@master
@@ -19,22 +18,3 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-  Deploy:
-    name: Build Docker
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v1
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_REGISTRY_TOKEN }}
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v2
-        with:
-          push: true # Will only build if this is not here
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref }}
-            ghcr.io/${{ github.repository }}:latest
