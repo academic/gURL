@@ -16,9 +16,6 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/spf13/cobra"
-
-	//"github.com/academic/gURL"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpproxy"
