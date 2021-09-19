@@ -1,4 +1,4 @@
-module gurl
+module github.com/academic/gURL
 
 go 1.15
 
