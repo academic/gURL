@@ -2,8 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/academic/gURL/src"
 	"github.com/spf13/cobra"
 	"os"
+)
+
+var (
+	proxy = ""
+	c = src.NewClient()
 )
 
 var rootCmd = &cobra.Command{
@@ -12,14 +18,22 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("URL: ", args[0])
+		checkFlags()
 	},
 }
 
 func Execute() {
 	rootCmd.AddCommand(cmdGet)
-
+	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "x", "", "[protocol://]host[:port] Use this proxy")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+// checkFlags checks the flags, get input, and sets the inputs to Client.
+func checkFlags() {
+	if proxy != "" {
+		c.SetProxy(proxy)
 	}
 }
