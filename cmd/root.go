@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	url = ""
+	URL   = ""
 	proxy = ""
 	c     = src.NewClient()
 )
@@ -18,9 +18,13 @@ var rootCmd = &cobra.Command{
 	Short: "gURL is open source CLI tool written in Go.",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		url = args[0]
-		fmt.Println("URL: ", url)
-		checkFlags()
+		URL = args[0]
+		fmt.Println("URL: ", URL)
+		err := checkFlags()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	},
 }
 
@@ -34,8 +38,13 @@ func Execute() {
 }
 
 // checkFlags checks the flags, get input, and sets the inputs to Client.
-func checkFlags() {
+func checkFlags() error {
 	if proxy != "" {
+		proxy, err := proxyCmd(proxy)
+		if err != nil {
+			return err
+		}
 		c.SetProxy(proxy)
 	}
+	return nil
 }
