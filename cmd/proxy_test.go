@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -17,7 +16,7 @@ func TestProxyCmd_ProxyUrl(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	if !strings.HasSuffix(testProxyUrl, proxyUrl) {
+	if testProxyUrl != proxyUrl {
 		t.Errorf("wrong proxy url. expected url: %s, got: %s", proxyUrl, testProxyUrl)
 	}
 }
@@ -27,7 +26,7 @@ func TestProxyCmd_HTTPUrl(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	if !strings.HasSuffix(testProxyUrl, httpProxyUrl) {
+	if testProxyUrl != httpProxyUrl {
 		t.Errorf("wrong proxy url. expected url: %s, got: %s", httpProxyUrl, testProxyUrl)
 	}
 }
@@ -38,7 +37,7 @@ func TestProxyCmd_MissingProxyUrl(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	if !strings.HasSuffix(testProxyUrl, expectedUrl) {
+	if testProxyUrl != expectedUrl {
 		t.Errorf("wrong proxy url. expected url: %s, got: %s", expectedUrl, testProxyUrl)
 	}
 }
@@ -49,7 +48,7 @@ func TestProxyCmd_MissingHTTPProxyUrl(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	if !strings.HasSuffix(testProxyUrl, expectedUrl) {
+	if testProxyUrl != expectedUrl {
 		t.Errorf("wrong proxy url. expected url: %s, got: %s", expectedUrl, testProxyUrl)
 	}
 }
