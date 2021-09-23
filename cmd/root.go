@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/academic/gURL/src"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var (
@@ -31,6 +32,10 @@ var (
 
 	// proxyNegotiate is the flag variable whether indicates command contains --proxy-negotiate flag.
 	proxyNegotiate = false
+
+	// cookie Pass the data to the HTTP server in the Cookie header.
+	// -b, --cookie <data|filename>
+	cookie = ""
 
 	// c is the client.
 	c = src.NewClient()
@@ -59,6 +64,8 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&proxyDigest, "proxy-digest", "", false, "Use Digest authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNTLM, "proxy-ntlm", "", false, "Use NTLM authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNegotiate, "proxy-negotiate", "", false, "Use HTTP Negotiate (SPNEGO) authentication on the proxy")
+	rootCmd.PersistentFlags().StringVarP(&cookie, "cookie", "b", "", " Pass the data to the HTTP server in the Cookie header.")
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -82,6 +89,13 @@ func checkFlags() error {
 		if !proxyNTLM && !proxyNegotiate && !proxyDigest { // Basic authentication
 			c.AddHeader("Proxy-Authenticate", fmt.Sprintf("Basic %s", proxyUserCredentials))
 		}
+	}
+	if cookie != "" {
+		cookie, err := cookieCmd(cookie)
+		if err != nil {
+			return err
+		}
+		c.AddCookie("", cookie)
 	}
 	return nil
 }
