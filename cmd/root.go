@@ -41,6 +41,10 @@ var rootCmd = &cobra.Command{
 	Short: "gURL is open source CLI tool written in Go.",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			fmt.Println("URL is not provided")
+			os.Exit(1)
+		}
 		URL = args[0]
 		fmt.Println("URL: ", URL)
 		err := checkFlags()
