@@ -64,7 +64,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&proxyDigest, "proxy-digest", "", false, "Use Digest authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNTLM, "proxy-ntlm", "", false, "Use NTLM authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNegotiate, "proxy-negotiate", "", false, "Use HTTP Negotiate (SPNEGO) authentication on the proxy")
-	rootCmd.PersistentFlags().StringVarP(&cookie, "cookie", "b", "", " Pass the data to the HTTP server in the Cookie header.")
+	rootCmd.Flags().StringVarP(&cookie, "cookie", "b", "", " Pass the data to the HTTP server in the Cookie header.")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

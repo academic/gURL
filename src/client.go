@@ -6,9 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/valyala/fasthttp"
-	"github.com/valyala/fasthttp/fasthttpproxy"
 	"io"
 	"mime/multipart"
 	"net/url"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpproxy"
 )
 
 var (
