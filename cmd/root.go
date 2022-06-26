@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/academic/gURL/src"
 	"github.com/spf13/cobra"
@@ -35,7 +36,8 @@ var (
 
 	// cookie Pass the data to the HTTP server in the Cookie header.
 	// -b, --cookie <data|filename>
-	cookie = ""
+	cookieFile = ""
+	cookies    []string
 
 	// c is the client.
 	c = src.NewClient()
@@ -64,7 +66,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&proxyDigest, "proxy-digest", "", false, "Use Digest authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNTLM, "proxy-ntlm", "", false, "Use NTLM authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNegotiate, "proxy-negotiate", "", false, "Use HTTP Negotiate (SPNEGO) authentication on the proxy")
-	rootCmd.Flags().StringVarP(&cookie, "cookie", "b", "", " Pass the data to the HTTP server in the Cookie header.")
+	rootCmd.Flags().StringSliceVarP(&cookies, "cookie", "b", []string{}, " Pass the data to the HTTP server in the Cookie header.")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -90,12 +92,17 @@ func checkFlags() error {
 			c.AddHeader("Proxy-Authenticate", fmt.Sprintf("Basic %s", proxyUserCredentials))
 		}
 	}
-	if cookie != "" {
-		cookie, err := cookieCmd(cookie)
-		if err != nil {
-			return err
+	if len(cookies) > 0 {
+
+		if strings.Contains(cookies[0], "=") {
+			cookies, err := cookiesCmd(cookies)
+			if err != nil {
+				return err
+			}
+			c.AddCookies(cookies)
+
 		}
-		c.AddCookie("", cookie)
+
 	}
 	return nil
 }
