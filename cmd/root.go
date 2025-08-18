@@ -143,6 +143,7 @@ func Execute() {
 	rootCmd.PersistentFlags().StringSliceVarP(&formData, "form", "F", []string{}, "Specify multipart MIME data")
 	rootCmd.PersistentFlags().StringVar(&jsonData, "json", "", "HTTP POST JSON data")
 	rootCmd.PersistentFlags().StringVar(&rawData, "raw", "", "HTTP POST raw data")
+	rootCmd.PersistentFlags().BoolVar(&compressed, "compressed", false, "Request compressed response")
 
 	// HTTP version flags
 	rootCmd.PersistentFlags().BoolVar(&http10, "http1.0", false, "Use HTTP 1.0")

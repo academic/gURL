@@ -2,6 +2,9 @@ package src
 
 import (
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"crypto/md5"
 	"crypto/tls"
@@ -224,6 +227,37 @@ func (c *Client) AddParams(params Mapper) *Client {
 		c.opts.params.Set(key, value)
 	}
 	return c
+}
+
+// decompressResponse decompresses the response body based on Content-Encoding header
+func decompressResponse(body []byte, contentEncoding string) ([]byte, error) {
+	switch strings.ToLower(contentEncoding) {
+	case "gzip":
+		reader, err := gzip.NewReader(bytes.NewReader(body))
+		if err != nil {
+			return body, err
+		}
+		defer reader.Close()
+		return io.ReadAll(reader)
+	case "deflate":
+		// Try zlib format first (common for deflate), then raw deflate
+		reader, err := zlib.NewReader(bytes.NewReader(body))
+		if err == nil {
+			defer reader.Close()
+			return io.ReadAll(reader)
+		}
+
+		// If zlib fails, try raw deflate
+		reader2 := flate.NewReader(bytes.NewReader(body))
+		defer reader2.Close()
+		return io.ReadAll(reader2)
+	case "br":
+		// Brotli decompression would require additional library
+		// For now, return the original body
+		return body, nil
+	default:
+		return body, nil
+	}
 }
 
 func (c *Client) AddHeader(key, value string) *Client {
@@ -508,11 +542,21 @@ func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body [
 		return nil, err
 	}
 
+	// Handle compression
+	responseBody := resp.Body()
+	contentEncoding := string(resp.Header.Peek("Content-Encoding"))
+	if contentEncoding != "" {
+		decompressedBody, err := decompressResponse(responseBody, contentEncoding)
+		if err == nil {
+			responseBody = decompressedBody
+		}
+	}
+
 	ret := &Response{
 		Cookie:     RequestCookies{Mapper: NewCookies()},
 		Header:     RequestHeaders{Mapper: NewHeaders()},
 		StatusCode: resp.StatusCode(),
-		Body:       resp.Body(),
+		Body:       responseBody,
 	}
 	resp.Header.VisitAll(func(key, value []byte) {
 		ret.Header.Set(string(key), string(value))
@@ -621,6 +665,15 @@ func (c *Client) callHTTP2OrHTTP3(url, method string, headers requestHeaders, bo
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	// Handle compression
+	contentEncoding := resp.Header.Get("Content-Encoding")
+	if contentEncoding != "" {
+		decompressedBody, err := decompressResponse(respBody, contentEncoding)
+		if err == nil {
+			respBody = decompressedBody
+		}
 	}
 
 	// Convert response

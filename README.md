@@ -70,7 +70,7 @@ gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, a
 | `--ipv6` | `-6` | Resolve names to IPv6 addresses | ❌ |
 | `--dns-servers <addresses>` | | DNS server addrs to use | ❌ |
 | **Advanced Options** |
-| `--compressed` | | Request compressed response | ❌ |
+| `--compressed` | | Request compressed response | ✅ |
 | `--limit-rate <speed>` | | Limit transfer speed to RATE | ❌ |
 | `--retry <num>` | | Retry request if transient problems occur | ❌ |
 | `--retry-delay <seconds>` | | Wait time between retries | ❌ |

@@ -25,6 +25,7 @@ var (
 	timeout         int
 	connectTimeout  int
 	cookieJar       string
+	compressed      bool
 	userAgent       string
 	referer         string
 	insecure        bool
@@ -193,6 +194,11 @@ func executeRequest(httpMethod, url string) {
 	// Add Referer if specified
 	if referer != "" {
 		c.AddHeader("Referer", referer)
+	}
+
+	// Add compression header if requested
+	if compressed {
+		c.AddHeader("Accept-Encoding", "gzip, deflate, br")
 	}
 
 	// Handle data for POST/PUT/PATCH requests
