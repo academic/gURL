@@ -17,3 +17,5 @@ gurl
 
 # IDE directories and files
 .idea/
+output.json
+test.txt
