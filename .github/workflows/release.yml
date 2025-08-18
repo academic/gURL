@@ -26,11 +26,11 @@ jobs:
           version: latest
           distribution: goreleaser
           args: release --clean
-          workdir: gurl
+          workdir: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
           name: gurl
-          path: gurl/dist/*
+          path: ./dist/*
