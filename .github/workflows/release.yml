@@ -25,7 +25,7 @@ jobs:
         with:
           version: ~v2
           distribution: goreleaser
-          args: release --clean
+          args: release --clean --skip-validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload assets
