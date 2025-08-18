@@ -1,6 +1,32 @@
 # gURL
 gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, and HTTP/3 protocols. It's designed as a curl-like command-line utility for making HTTP requests with various options and configurations.
 
+## Installation
+
+### Install Script
+
+```bash
+curl -sSL https://raw.githubusercontent.com/academic/gURL/main/install.sh | bash
+```
+
+### From Source
+
+1. Clone the repository:
+```bash
+git clone https://github.com/academic/gURL.git
+cd gURL
+```
+
+2. Build and install:
+```bash
+go build -o gurl
+sudo mv gurl /usr/local/bin/
+```
+
+### Download Binary
+
+Download the latest release from [GitHub Releases](https://github.com/academic/gURL/releases) and place it in your PATH.
+
 ## Available Options
 
 | Option | Short | Description | Status |
