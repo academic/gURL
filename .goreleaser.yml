@@ -1,16 +1,6 @@
 # GoReleaser configuration
 version: 2
 
-# Disable semantic version checking to allow custom tag formats
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
-
-# Disable semver checking
-git:
-  ignore_tags:
-    - "{{ not (hasPrefix .Tag \"v\") }}"
-  prerelease_suffix: "-"
-
 # Build configuration
 builds:
   - id: gURL
@@ -33,7 +23,7 @@ builds:
 # Archive configuration
 archives:
   - id: gURL
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         format: zip
@@ -44,37 +34,12 @@ archives:
 
 # Release configuration
 release:
-  # Disable automatic release notes generation
   disable: false
-  # Don't validate the tag as semver
-  prerelease: auto
 
 # Changelog configuration
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
-      - "merge conflict"
-      - Merge pull request
-      - Merge remote-tracking branch
-      - Merge branch
+  disable: true
 
 # Checksum configuration
 checksum:
   name_template: "checksums.txt"
-
-# Docker configuration (optional)
-dockers:
-  - image_templates:
-      - "ghcr.io/academic/gurl:{{ .Tag }}"
-      - "ghcr.io/academic/gurl:latest"
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
