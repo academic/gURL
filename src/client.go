@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,12 +42,13 @@ var (
 )
 
 type Client struct {
-	proxy       string // set to all requests
-	timeout     time.Duration
-	crt         *tls.Certificate
-	opts        *requestOptions
-	httpVersion string // "1.0", "1.1", "2", "3"
-	insecure    bool   // allow insecure SSL
+	proxy          string // set to all requests
+	timeout        time.Duration
+	connectTimeout time.Duration // connection timeout separate from request timeout
+	crt            *tls.Certificate
+	opts           *requestOptions
+	httpVersion    string // "1.0", "1.1", "2", "3"
+	insecure       bool   // allow insecure SSL
 	// Authentication fields
 	authType string // "basic", "digest", "ntlm", "negotiate"
 	username string
@@ -82,6 +84,11 @@ func (c *Client) SetProxy(proxy string) *Client {
 
 func (c *Client) SetTimeout(duration time.Duration) *Client {
 	c.timeout = duration
+	return c
+}
+
+func (c *Client) SetConnectTimeout(duration time.Duration) *Client {
+	c.connectTimeout = duration
 	return c
 }
 
@@ -464,6 +471,28 @@ func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body [
 	client := &fasthttp.Client{
 		ReadTimeout: c.timeout,
 	}
+
+	// Set connect timeout if specified
+	if c.connectTimeout > 0 {
+		client.WriteTimeout = c.connectTimeout
+		client.ReadTimeout = c.timeout
+		// Create a custom dialer with connect timeout
+		if c.proxy != "" {
+			// Use proxy dialer with connect timeout
+			client.Dial = func(addr string) (net.Conn, error) {
+				proxyDialer := fasthttpproxy.FasthttpHTTPDialer(c.proxy)
+				return proxyDialer(addr)
+			}
+		} else {
+			// Use direct dialer with connect timeout
+			client.Dial = func(addr string) (net.Conn, error) {
+				return net.DialTimeout("tcp", addr, c.connectTimeout)
+			}
+		}
+	} else if c.proxy != "" {
+		client.Dial = fasthttpproxy.FasthttpHTTPDialer(c.proxy)
+	}
+
 	if c.crt != nil {
 		client.TLSConfig = &tls.Config{
 			InsecureSkipVerify: c.insecure,
@@ -473,9 +502,6 @@ func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body [
 		client.TLSConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
-	}
-	if c.proxy != "" {
-		client.Dial = fasthttpproxy.FasthttpHTTPDialer(c.proxy)
 	}
 
 	if err := client.Do(req, resp); err != nil {
@@ -490,11 +516,26 @@ func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body [
 	}
 	resp.Header.VisitAll(func(key, value []byte) {
 		ret.Header.Set(string(key), string(value))
-	})
-	resp.Header.VisitAllCookie(func(key, value []byte) {
-		ret.Cookie.Set(string(key), string(value))
+		// Parse Set-Cookie headers manually
+		if strings.ToLower(string(key)) == "set-cookie" {
+			parseCookieFromSetCookie(string(value), ret.Cookie)
+		}
 	})
 	return ret, nil
+}
+
+// parseCookieFromSetCookie parses a Set-Cookie header value and extracts the cookie name and value
+func parseCookieFromSetCookie(setCookieValue string, cookies RequestCookies) {
+	// Simple parsing: extract name=value from "name=value; Path=/; ..."
+	parts := strings.Split(setCookieValue, ";")
+	if len(parts) > 0 {
+		nameValue := strings.TrimSpace(parts[0])
+		if idx := strings.Index(nameValue, "="); idx > 0 {
+			name := strings.TrimSpace(nameValue[:idx])
+			value := strings.TrimSpace(nameValue[idx+1:])
+			cookies.Set(name, value)
+		}
+	}
 }
 
 func (c *Client) callHTTP2OrHTTP3(url, method string, headers requestHeaders, body []byte) (*Response, error) {
@@ -521,6 +562,16 @@ func (c *Client) callHTTP2OrHTTP3(url, method string, headers requestHeaders, bo
 
 		transport := &http2.Transport{
 			TLSClientConfig: tlsConfig,
+		}
+
+		// Set dial timeout if connectTimeout is specified
+		if c.connectTimeout > 0 {
+			transport.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				dialer := &net.Dialer{
+					Timeout: c.connectTimeout,
+				}
+				return tls.DialWithDialer(dialer, network, addr, cfg)
+			}
 		}
 
 		client = &http.Client{

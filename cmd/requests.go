@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ var (
 	followRedirects bool
 	maxRedirects    int
 	timeout         int
+	connectTimeout  int
+	cookieJar       string
 	userAgent       string
 	referer         string
 	insecure        bool
@@ -125,6 +128,11 @@ func executeRequest(httpMethod, url string) {
 	// Apply timeout if specified
 	if timeout > 0 {
 		c.SetTimeout(time.Duration(timeout) * time.Second)
+	}
+
+	// Apply connect timeout if specified
+	if connectTimeout > 0 {
+		c.SetConnectTimeout(time.Duration(connectTimeout) * time.Second)
 	}
 
 	// Set HTTP version
@@ -256,10 +264,10 @@ func executeRequest(httpMethod, url string) {
 		os.Exit(1)
 	}
 
-	handleResponse(response, httpMethod)
+	handleResponse(response, httpMethod, url)
 }
 
-func handleResponse(response *src.Response, httpMethod string) {
+func handleResponse(response *src.Response, httpMethod string, requestURL string) {
 	var output io.Writer = os.Stdout
 
 	// Handle output file
@@ -303,5 +311,49 @@ func handleResponse(response *src.Response, httpMethod string) {
 	// Show status code if verbose and not silent
 	if verbose && !silent && outputFile == "" {
 		fmt.Fprintf(os.Stderr, "HTTP Status: %d\n", response.StatusCode)
+	}
+
+	// Write cookies to cookie jar file if specified
+	if cookieJar != "" {
+		saveCookiesToFile(response, cookieJar, requestURL)
+	}
+}
+
+// saveCookiesToFile writes response cookies to the specified file
+func saveCookiesToFile(response *src.Response, filename, requestURL string) {
+	if len(response.Cookie.Mapper) == 0 {
+		return // No cookies to save
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		if !silent {
+			fmt.Fprintf(os.Stderr, "Error creating cookie jar file: %v\n", err)
+		}
+		return
+	}
+	defer file.Close()
+
+	// Extract domain from URL
+	parsedURL, err := url.Parse(requestURL)
+	domain := ".example.com" // fallback
+	if err == nil && parsedURL.Host != "" {
+		domain = parsedURL.Host
+		// Add leading dot for domain cookies
+		if !strings.HasPrefix(domain, ".") {
+			domain = "." + domain
+		}
+	}
+
+	// Write Netscape cookie file format header
+	fmt.Fprintln(file, "# Netscape HTTP Cookie File")
+	fmt.Fprintln(file, "# This is a generated file! Do not edit.")
+	fmt.Fprintln(file, "")
+
+	// Write cookies in Netscape format:
+	// domain	flag	path	secure	expiration	name	value
+	for name, value := range response.Cookie.Mapper {
+		// Use Netscape format: domain, flag, path, secure, expiration, name, value
+		fmt.Fprintf(file, "%s\tTRUE\t/\tFALSE\t0\t%s\t%s\n", domain, name, value)
 	}
 }

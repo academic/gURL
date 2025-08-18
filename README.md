@@ -44,7 +44,7 @@ gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, a
 | `--proxy-negotiate` | | Use HTTP Negotiate authentication on the proxy | ✅ |
 | **Cookie Management** |
 | `--cookie <data\|filename>` | `-b` | Send cookies from string/file | ✅ |
-| `--cookie-jar <filename>` | `-c` | Write cookies to filename after operation | ❌ |
+| `--cookie-jar <filename>` | `-c` | Write cookies to filename after operation | ✅ |
 | **Output Control** |
 | `--output <file>` | `-o` | Write to file instead of stdout | ✅ |
 | `--verbose` | `-v` | Make the operation more talkative | ✅ |
@@ -55,7 +55,7 @@ gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, a
 | `--max-time <seconds>` | `-m` | Maximum time allowed for the transfer | ✅ |
 | `--max-redirs <num>` | | Maximum number of redirects allowed | ✅ |
 | `--location` | `-L` | Follow redirects | ✅ |
-| `--connect-timeout <seconds>` | | Maximum time allowed for connection | ❌ |
+| `--connect-timeout <seconds>` | | Maximum time allowed for connection | ✅ |
 | **SSL/TLS Options** |
 | `--cacert <file>` | | CA certificate to verify peer against | ❌ |
 | `--capath <dir>` | | CA directory to verify peer against | ❌ |

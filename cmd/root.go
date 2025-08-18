@@ -122,6 +122,7 @@ func Execute() {
 
 	// Cookie flags
 	rootCmd.PersistentFlags().StringSliceVarP(&cookies, "cookie", "b", []string{}, "Pass the data to the HTTP server in the Cookie header")
+	rootCmd.PersistentFlags().StringVarP(&cookieJar, "cookie-jar", "c", "", "Write cookies to filename after operation")
 
 	// HTTP request flags
 	rootCmd.PersistentFlags().StringSliceVarP(&headers, "header", "H", []string{}, "Pass custom header(s) to server")
@@ -133,6 +134,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&followRedirects, "location", "L", false, "Follow redirects")
 	rootCmd.PersistentFlags().IntVarP(&maxRedirects, "max-redirs", "", 50, "Maximum number of redirects allowed")
 	rootCmd.PersistentFlags().IntVarP(&timeout, "max-time", "m", 0, "Maximum time allowed for the transfer")
+	rootCmd.PersistentFlags().IntVar(&connectTimeout, "connect-timeout", 0, "Maximum time allowed for connection")
 	rootCmd.PersistentFlags().StringVarP(&userAgent, "user-agent", "A", "", "Send User-Agent <name> to server")
 	rootCmd.PersistentFlags().StringVarP(&referer, "referer", "e", "", "Referrer URL")
 	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Allow insecure server connections when using SSL")
