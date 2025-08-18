@@ -119,6 +119,12 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&jsonData, "json", "", "HTTP POST JSON data")
 	rootCmd.PersistentFlags().StringVar(&rawData, "raw", "", "HTTP POST raw data")
 
+	// HTTP version flags
+	rootCmd.PersistentFlags().BoolVar(&http10, "http1.0", false, "Use HTTP 1.0")
+	rootCmd.PersistentFlags().BoolVar(&http11, "http1.1", false, "Use HTTP 1.1")
+	rootCmd.PersistentFlags().BoolVar(&http2, "http2", false, "Use HTTP 2")
+	rootCmd.PersistentFlags().BoolVar(&http3, "http3", false, "Use HTTP 3")
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

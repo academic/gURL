@@ -1,5 +1,5 @@
-# [WIP] gURL
-gURL is a tool to transfer data from or to a server, using one of the supported protocols (DICT, FILE, FTP, FTPS, GOPHER, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, MQTT, POP3, POP3S, RTMP, RTMPS, RTSP, SCP, SFTP, SMB, SMBS, SMTP, SMTPS, TELNET and TFTP). The command is designed to work without user interaction.
+# gURL
+gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, and HTTP/3 protocols. It's designed as a curl-like command-line utility for making HTTP requests with various options and configurations.
 
 ## options 
 ```

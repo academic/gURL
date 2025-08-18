@@ -2,11 +2,13 @@ package src
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -15,8 +17,10 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/quic-go/quic-go/http3"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpproxy"
+	"golang.org/x/net/http2"
 )
 
 var (
@@ -35,10 +39,12 @@ var (
 )
 
 type Client struct {
-	proxy   string // set to all requests
-	timeout time.Duration
-	crt     *tls.Certificate
-	opts    *requestOptions
+	proxy       string // set to all requests
+	timeout     time.Duration
+	crt         *tls.Certificate
+	opts        *requestOptions
+	httpVersion string // "1.0", "1.1", "2", "3"
+	insecure    bool   // allow insecure SSL
 }
 
 func NewClientPool() sync.Pool {
@@ -55,9 +61,11 @@ func NewClientPool() sync.Pool {
 
 func NewClient() *Client {
 	return &Client{
-		timeout: defaultTimeDuration,
-		crt:     nil,
-		opts:    newRequestOptions(),
+		timeout:     defaultTimeDuration,
+		crt:         nil,
+		opts:        newRequestOptions(),
+		httpVersion: "1.1", // default to HTTP/1.1
+		insecure:    false,
 	}
 }
 
@@ -68,6 +76,16 @@ func (c *Client) SetProxy(proxy string) *Client {
 
 func (c *Client) SetTimeout(duration time.Duration) *Client {
 	c.timeout = duration
+	return c
+}
+
+func (c *Client) SetHTTPVersion(version string) *Client {
+	c.httpVersion = version
+	return c
+}
+
+func (c *Client) SetInsecure(insecure bool) *Client {
+	c.insecure = insecure
 	return c
 }
 
@@ -258,6 +276,16 @@ func (c *Client) SendFile(url string) (*Response, error) {
 }
 
 func (c *Client) call(url, method string, headers requestHeaders, body []byte) (*Response, error) {
+	// Use HTTP/2 or HTTP/3 if specified
+	if c.httpVersion == "2" || c.httpVersion == "3" {
+		return c.callHTTP2OrHTTP3(url, method, headers, body)
+	}
+
+	// Use fasthttp for HTTP/1.x
+	return c.callFastHTTP(url, method, headers, body)
+}
+
+func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body []byte) (*Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 	resp := fasthttp.AcquireResponse()
@@ -327,8 +355,12 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 	}
 	if c.crt != nil {
 		client.TLSConfig = &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: c.insecure,
 			Certificates:       []tls.Certificate{*c.crt},
+		}
+	} else if c.insecure {
+		client.TLSConfig = &tls.Config{
+			InsecureSkipVerify: true,
 		}
 	}
 	if c.proxy != "" {
@@ -351,6 +383,101 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 	resp.Header.VisitAllCookie(func(key, value []byte) {
 		ret.Cookie.Set(string(key), string(value))
 	})
+	return ret, nil
+}
+
+func (c *Client) callHTTP2OrHTTP3(url, method string, headers requestHeaders, body []byte) (*Response, error) {
+	var client *http.Client
+
+	if c.httpVersion == "3" {
+		// HTTP/3 client
+		client = &http.Client{
+			Transport: &http3.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: c.insecure,
+				},
+			},
+			Timeout: c.timeout,
+		}
+	} else {
+		// HTTP/2 client
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: c.insecure,
+		}
+		if c.crt != nil {
+			tlsConfig.Certificates = []tls.Certificate{*c.crt}
+		}
+
+		transport := &http2.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+
+		client = &http.Client{
+			Transport: transport,
+			Timeout:   c.timeout,
+		}
+	}
+
+	// Create request
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), method, url, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set headers
+	for key, value := range headers.normal.Mapper {
+		req.Header.Set(key, value)
+	}
+
+	// Handle cookies
+	if len(headers.cookies.Mapper) > 0 {
+		var cookiePairs []string
+		for key, value := range headers.cookies.Mapper {
+			cookiePairs = append(cookiePairs, fmt.Sprintf("%s=%s", key, value))
+		}
+		if len(cookiePairs) > 0 {
+			req.Header.Set("Cookie", strings.Join(cookiePairs, "; "))
+		}
+	}
+
+	// Make request
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert response
+	ret := &Response{
+		Cookie:     RequestCookies{Mapper: NewCookies()},
+		Header:     RequestHeaders{Mapper: NewHeaders()},
+		StatusCode: resp.StatusCode,
+		Body:       respBody,
+	}
+
+	// Copy headers
+	for key, values := range resp.Header {
+		if len(values) > 0 {
+			ret.Header.Set(key, values[0])
+		}
+	}
+
+	// Copy cookies
+	for _, cookie := range resp.Cookies() {
+		ret.Cookie.Set(cookie.Name, cookie.Value)
+	}
+
 	return ret, nil
 }
 

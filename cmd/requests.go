@@ -30,6 +30,10 @@ var (
 	formData        []string
 	jsonData        string
 	rawData         string
+	http10          bool
+	http11          bool
+	http2           bool
+	http3           bool
 )
 
 var cmdGet = &cobra.Command{
@@ -113,6 +117,22 @@ func executeRequest(httpMethod, url string) {
 	// Apply timeout if specified
 	if timeout > 0 {
 		c.SetTimeout(time.Duration(timeout) * time.Second)
+	}
+
+	// Set HTTP version
+	if http10 {
+		c.SetHTTPVersion("1.0")
+	} else if http11 {
+		c.SetHTTPVersion("1.1")
+	} else if http2 {
+		c.SetHTTPVersion("2")
+	} else if http3 {
+		c.SetHTTPVersion("3")
+	}
+
+	// Set insecure mode
+	if insecure {
+		c.SetInsecure(true)
 	}
 
 	// Handle cookies
