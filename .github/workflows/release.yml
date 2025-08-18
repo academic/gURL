@@ -23,14 +23,13 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: latest
+          version: ~v2
           distribution: goreleaser
           args: release --clean
-          workdir: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
-          name: gurl
+          name: gURL
           path: ./dist/*
