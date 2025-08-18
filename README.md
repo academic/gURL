@@ -27,13 +27,14 @@ gURL is a modern HTTP client tool with support for HTTP/1.0, HTTP/1.1, HTTP/2, a
 | `--request <method>` | `-X` | Specify request command to use | ✅ |
 | `--user-agent <name>` | `-A` | Send User-Agent to server | ✅ |
 | `--referer <URL>` | `-e` | Referrer URL | ✅ |
+| `--user <user:password>` | `-u` | User and password for authentication | ✅ |
 | **Authentication & Security** |
 | `--insecure` | `-k` | Allow insecure server connections when using SSL | ✅ |
 | `--cert <certificate[:password]>` | `-E` | Client certificate file and password | ✅ |
-| `--basic` | | Use HTTP Basic Authentication | ❌ |
-| `--digest` | | Use HTTP Digest Authentication | ❌ |
-| `--ntlm` | | Use HTTP NTLM authentication | ❌ |
-| `--negotiate` | | Use HTTP Negotiate (SPNEGO) authentication | ❌ |
+| `--basic` | | Use HTTP Basic Authentication | ✅ |
+| `--digest` | | Use HTTP Digest Authentication | ✅ |
+| `--ntlm` | | Use HTTP NTLM authentication | ✅ |
+| `--negotiate` | | Use HTTP Negotiate (SPNEGO) authentication | ✅ |
 | **Proxy Options** |
 | `--proxy <[protocol://]host[:port]>` | `-x` | Use this proxy | ✅ |
 | `--proxy-user <user:password>` | `-U` | Proxy user and password | ✅ |

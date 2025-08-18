@@ -114,6 +114,14 @@ var cmdPatch = &cobra.Command{
 }
 
 func executeRequest(httpMethod, url string) {
+	// Check flags and set up authentication
+	if err := checkFlags(); err != nil {
+		if !silent {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
+		os.Exit(1)
+	}
+
 	// Apply timeout if specified
 	if timeout > 0 {
 		c.SetTimeout(time.Duration(timeout) * time.Second)

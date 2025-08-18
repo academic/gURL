@@ -34,6 +34,22 @@ var (
 	// proxyNegotiate is the flag variable whether indicates command contains --proxy-negotiate flag.
 	proxyNegotiate = false
 
+	// Authentication variables
+	// basic is the flag variable whether indicates command contains --basic flag.
+	basic = false
+
+	// digest is the flag variable whether indicates command contains --digest flag.
+	digest = false
+
+	// ntlm is the flag variable whether indicates command contains --ntlm flag.
+	ntlm = false
+
+	// negotiate is the flag variable whether indicates command contains --negotiate flag.
+	negotiate = false
+
+	// user is the username-password pair in <user:password> format for authentication.
+	user = ""
+
 	// cookie Pass the data to the HTTP server in the Cookie header.
 	// -b, --cookie <data|filename>
 	cookieFile = ""
@@ -96,6 +112,13 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&proxyDigest, "proxy-digest", "", false, "Use Digest authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNTLM, "proxy-ntlm", "", false, "Use NTLM authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNegotiate, "proxy-negotiate", "", false, "Use HTTP Negotiate (SPNEGO) authentication on the proxy")
+
+	// Authentication flags
+	rootCmd.PersistentFlags().BoolVar(&basic, "basic", false, "Use HTTP Basic Authentication")
+	rootCmd.PersistentFlags().BoolVar(&digest, "digest", false, "Use HTTP Digest Authentication")
+	rootCmd.PersistentFlags().BoolVar(&ntlm, "ntlm", false, "Use HTTP NTLM authentication")
+	rootCmd.PersistentFlags().BoolVar(&negotiate, "negotiate", false, "Use HTTP Negotiate (SPNEGO) authentication")
+	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "", "<user:password> User and password for authentication")
 
 	// Cookie flags
 	rootCmd.PersistentFlags().StringSliceVarP(&cookies, "cookie", "b", []string{}, "Pass the data to the HTTP server in the Cookie header")
@@ -173,5 +196,22 @@ func checkFlags() error {
 			c.AddCookies(cookieMap)
 		}
 	}
+
+	// Handle authentication
+	if user != "" {
+		if basic {
+			c.SetBasicAuth(user)
+		} else if digest {
+			c.SetDigestAuth(user)
+		} else if ntlm {
+			c.SetNTLMAuth(user)
+		} else if negotiate {
+			c.SetNegotiateAuth(user)
+		} else {
+			// Default to basic auth if no specific auth method is specified
+			c.SetBasicAuth(user)
+		}
+	}
+
 	return nil
 }

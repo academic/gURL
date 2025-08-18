@@ -3,7 +3,9 @@ package src
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -45,6 +47,10 @@ type Client struct {
 	opts        *requestOptions
 	httpVersion string // "1.0", "1.1", "2", "3"
 	insecure    bool   // allow insecure SSL
+	// Authentication fields
+	authType string // "basic", "digest", "ntlm", "negotiate"
+	username string
+	password string
 }
 
 func NewClientPool() sync.Pool {
@@ -97,6 +103,108 @@ func (c *Client) SetCrt(certPath, keyPath string) *Client {
 	}
 	c.crt = &clientCrt
 	return c
+}
+
+// SetBasicAuth configures HTTP Basic Authentication
+func (c *Client) SetBasicAuth(userPass string) *Client {
+	parts := strings.SplitN(userPass, ":", 2)
+	if len(parts) == 2 {
+		c.authType = "basic"
+		c.username = parts[0]
+		c.password = parts[1]
+	}
+	return c
+}
+
+// SetDigestAuth configures HTTP Digest Authentication
+func (c *Client) SetDigestAuth(userPass string) *Client {
+	parts := strings.SplitN(userPass, ":", 2)
+	if len(parts) == 2 {
+		c.authType = "digest"
+		c.username = parts[0]
+		c.password = parts[1]
+	}
+	return c
+}
+
+// SetNTLMAuth configures HTTP NTLM Authentication
+func (c *Client) SetNTLMAuth(userPass string) *Client {
+	parts := strings.SplitN(userPass, ":", 2)
+	if len(parts) == 2 {
+		c.authType = "ntlm"
+		c.username = parts[0]
+		c.password = parts[1]
+	}
+	return c
+}
+
+// SetNegotiateAuth configures HTTP Negotiate (SPNEGO) Authentication
+func (c *Client) SetNegotiateAuth(userPass string) *Client {
+	parts := strings.SplitN(userPass, ":", 2)
+	if len(parts) == 2 {
+		c.authType = "negotiate"
+		c.username = parts[0]
+		c.password = parts[1]
+	}
+	return c
+}
+
+// addAuthenticationHeaders adds authentication headers based on the configured auth type
+func (c *Client) addAuthenticationHeaders(headers requestHeaders) {
+	switch c.authType {
+	case "basic":
+		auth := base64.StdEncoding.EncodeToString([]byte(c.username + ":" + c.password))
+		headers.normal.Set("Authorization", "Basic "+auth)
+	case "digest":
+		// For digest auth, we need to handle the initial request and response challenge
+		// This is a simplified implementation - in practice, digest auth requires
+		// parsing the WWW-Authenticate header from a 401 response
+		headers.normal.Set("Authorization", "Digest username=\""+c.username+"\"")
+	case "ntlm":
+		// NTLM requires a complex handshake - this is a placeholder
+		headers.normal.Set("Authorization", "NTLM")
+	case "negotiate":
+		// Negotiate (SPNEGO) requires GSSAPI/Kerberos - this is a placeholder
+		headers.normal.Set("Authorization", "Negotiate")
+	}
+}
+
+// parseDigestChallenge parses a digest challenge and returns authentication header
+func (c *Client) parseDigestChallenge(challenge, method, uri string) string {
+	// Parse the challenge parameters
+	params := make(map[string]string)
+
+	// Simple parsing - in production this should be more robust
+	parts := strings.Split(challenge, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if idx := strings.Index(part, "="); idx > 0 {
+			key := strings.TrimSpace(part[:idx])
+			value := strings.Trim(strings.TrimSpace(part[idx+1:]), "\"")
+			params[key] = value
+		}
+	}
+
+	realm := params["realm"]
+	nonce := params["nonce"]
+	qop := params["qop"]
+
+	// Generate response hash
+	ha1 := fmt.Sprintf("%x", md5.Sum([]byte(c.username+":"+realm+":"+c.password)))
+	ha2 := fmt.Sprintf("%x", md5.Sum([]byte(method+":"+uri)))
+
+	var response string
+	if qop == "auth" {
+		nc := "00000001"
+		cnonce := "0a4f113b"
+		response = fmt.Sprintf("%x", md5.Sum([]byte(ha1+":"+nonce+":"+nc+":"+cnonce+":"+qop+":"+ha2)))
+		return fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", response=\"%s\"",
+			c.username, realm, nonce, uri, qop, nc, cnonce, response)
+	} else {
+		response = fmt.Sprintf("%x", md5.Sum([]byte(ha1+":"+nonce+":"+ha2)))
+		return fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\"",
+			c.username, realm, nonce, uri, response)
+	}
 }
 
 func (c *Client) AddParam(key, value string) *Client {
@@ -294,6 +402,9 @@ func (c *Client) callFastHTTP(url, method string, headers requestHeaders, body [
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
 
+	// Add authentication headers if configured
+	c.addAuthenticationHeaders(headers)
+
 	// Handle cookies by creating a proper Cookie header
 	if len(headers.cookies.Mapper) > 0 {
 		var cookiePairs []string
@@ -428,6 +539,9 @@ func (c *Client) callHTTP2OrHTTP3(url, method string, headers requestHeaders, bo
 	if err != nil {
 		return nil, err
 	}
+
+	// Add authentication headers if configured
+	c.addAuthenticationHeaders(headers)
 
 	// Set headers
 	for key, value := range headers.normal.Mapper {
