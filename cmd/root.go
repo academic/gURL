@@ -45,32 +45,79 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "gURL [options...] <url>",
-	Short: "gURL is open source CLI tool written in Go.",
-	Args:  cobra.MaximumNArgs(1),
+	Short: "gURL is a command line tool for transferring data with URLs",
+	Long: `gURL is a command line tool for transferring data from or to a server.
+It supports various protocols and aims to be a curl-like tool written in Go.
+
+Examples:
+  gURL GET https://example.com
+  gURL POST https://example.com -d "data=value"
+  gURL GET https://example.com -H "Authorization: Bearer token"
+  gURL -X PATCH https://example.com --json '{"key":"value"}'
+  gURL POST https://example.com -T file.txt`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			fmt.Println("URL is not provided")
 			os.Exit(1)
 		}
 		URL = args[0]
-		fmt.Println("URL: ", URL)
+
 		err := checkFlags()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
+		// If method is specified with -X flag, use it
+		httpMethod := "GET" // default
+		if method != "" {
+			httpMethod = strings.ToUpper(method)
+		}
+
+		executeRequest(httpMethod, URL)
 	},
 }
 
 func Execute() {
+	// Add all HTTP method commands
 	rootCmd.AddCommand(cmdGet)
+	rootCmd.AddCommand(cmdPost)
+	rootCmd.AddCommand(cmdPut)
+	rootCmd.AddCommand(cmdDelete)
+	rootCmd.AddCommand(cmdHead)
+	rootCmd.AddCommand(cmdOptions)
+	rootCmd.AddCommand(cmdPatch)
+
+	// Proxy flags
 	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "x", "", "[protocol://]host[:port] Use this proxy")
 	rootCmd.PersistentFlags().StringVarP(&proxyUser, "proxy-user", "U", "", "<user:password> Proxy user and password")
 	rootCmd.PersistentFlags().BoolVarP(&proxyBasic, "proxy-basic", "", true, "Use Basic authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyDigest, "proxy-digest", "", false, "Use Digest authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNTLM, "proxy-ntlm", "", false, "Use NTLM authentication on the proxy")
 	rootCmd.PersistentFlags().BoolVarP(&proxyNegotiate, "proxy-negotiate", "", false, "Use HTTP Negotiate (SPNEGO) authentication on the proxy")
-	rootCmd.Flags().StringSliceVarP(&cookies, "cookie", "b", []string{}, " Pass the data to the HTTP server in the Cookie header.")
+
+	// Cookie flags
+	rootCmd.PersistentFlags().StringSliceVarP(&cookies, "cookie", "b", []string{}, "Pass the data to the HTTP server in the Cookie header")
+
+	// HTTP request flags
+	rootCmd.PersistentFlags().StringSliceVarP(&headers, "header", "H", []string{}, "Pass custom header(s) to server")
+	rootCmd.PersistentFlags().StringSliceVarP(&data, "data", "d", []string{}, "HTTP POST data")
+	rootCmd.PersistentFlags().StringVarP(&outputFile, "output", "o", "", "Write to file instead of stdout")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Make the operation more talkative")
+	rootCmd.PersistentFlags().BoolVarP(&silent, "silent", "s", false, "Silent mode")
+	rootCmd.PersistentFlags().BoolVarP(&includeHeaders, "include", "i", false, "Include protocol response headers in the output")
+	rootCmd.PersistentFlags().BoolVarP(&followRedirects, "location", "L", false, "Follow redirects")
+	rootCmd.PersistentFlags().IntVarP(&maxRedirects, "max-redirs", "", 50, "Maximum number of redirects allowed")
+	rootCmd.PersistentFlags().IntVarP(&timeout, "max-time", "m", 0, "Maximum time allowed for the transfer")
+	rootCmd.PersistentFlags().StringVarP(&userAgent, "user-agent", "A", "", "Send User-Agent <name> to server")
+	rootCmd.PersistentFlags().StringVarP(&referer, "referer", "e", "", "Referrer URL")
+	rootCmd.PersistentFlags().BoolVarP(&insecure, "insecure", "k", false, "Allow insecure server connections when using SSL")
+	rootCmd.PersistentFlags().StringVarP(&method, "request", "X", "", "Specify request command to use")
+	rootCmd.PersistentFlags().StringVarP(&uploadFile, "upload-file", "T", "", "Transfer local FILE to destination")
+	rootCmd.PersistentFlags().StringSliceVarP(&formData, "form", "F", []string{}, "Specify multipart MIME data")
+	rootCmd.PersistentFlags().StringVar(&jsonData, "json", "", "HTTP POST JSON data")
+	rootCmd.PersistentFlags().StringVar(&rawData, "raw", "", "HTTP POST raw data")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -97,16 +144,28 @@ func checkFlags() error {
 		}
 	}
 	if len(cookies) > 0 {
-
-		if strings.Contains(cookies[0], "=") {
-			cookies, err := cookiesCmd(cookies)
-			if err != nil {
-				return err
+		cookieMap := make(map[string]string)
+		for _, cookie := range cookies {
+			if strings.Contains(cookie, "=") {
+				// Handle multiple cookies separated by &
+				if strings.Contains(cookie, "&") {
+					pairs := strings.Split(cookie, "&")
+					for _, pair := range pairs {
+						if cookieParts := strings.SplitN(pair, "=", 2); len(cookieParts) == 2 {
+							cookieMap[strings.TrimSpace(cookieParts[0])] = strings.TrimSpace(cookieParts[1])
+						}
+					}
+				} else {
+					// Single cookie
+					if cookieParts := strings.SplitN(cookie, "=", 2); len(cookieParts) == 2 {
+						cookieMap[strings.TrimSpace(cookieParts[0])] = strings.TrimSpace(cookieParts[1])
+					}
+				}
 			}
-			c.AddCookies(cookies)
-
 		}
-
+		if len(cookieMap) > 0 {
+			c.AddCookies(cookieMap)
+		}
 	}
 	return nil
 }

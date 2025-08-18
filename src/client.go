@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -29,8 +28,8 @@ var (
 
 	formContentType = "multipart/form-data"
 
-	EmptyUrlErr  = errors.New("empty url")
-	EmptyFileErr = errors.New("empty file")
+	ErrEmptyURL  = errors.New("empty url")
+	ErrEmptyFile = errors.New("empty file")
 
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
@@ -148,7 +147,7 @@ func (c *Client) AddBodyBytes(bodyBytes []byte) *Client {
 
 func (c *Client) Get(rawUrl string) (*Response, error) {
 	if rawUrl == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
 	}
 	var (
 		urlValue = url.Values{}
@@ -170,7 +169,7 @@ func (c *Client) Get(rawUrl string) (*Response, error) {
 
 func (c *Client) Post(url string) (*Response, error) {
 	if url == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
 	}
 
 	return c.call(url, fasthttp.MethodPost, c.opts.headers, c.opts.body)
@@ -178,7 +177,7 @@ func (c *Client) Post(url string) (*Response, error) {
 
 func (c *Client) Put(url string) (*Response, error) {
 	if url == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
 	}
 
 	return c.call(url, fasthttp.MethodPut, c.opts.headers, c.opts.body)
@@ -186,7 +185,7 @@ func (c *Client) Put(url string) (*Response, error) {
 
 func (c *Client) Delete(url string) (*Response, error) {
 	if url == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
 	}
 
 	return c.call(url, fasthttp.MethodDelete, c.opts.headers, c.opts.body)
@@ -194,18 +193,43 @@ func (c *Client) Delete(url string) (*Response, error) {
 
 func (c *Client) Options(url string) (*Response, error) {
 	if url == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
 	}
 
 	return c.call(url, fasthttp.MethodOptions, c.opts.headers, c.opts.body)
 }
 
-func (c *Client) SendFile(url string, options ...RequestOption) (*Response, error) {
+func (c *Client) Head(url string) (*Response, error) {
 	if url == "" {
-		return nil, EmptyUrlErr
+		return nil, ErrEmptyURL
+	}
+
+	return c.call(url, fasthttp.MethodHead, c.opts.headers, nil)
+}
+
+func (c *Client) Patch(url string) (*Response, error) {
+	if url == "" {
+		return nil, ErrEmptyURL
+	}
+
+	return c.call(url, fasthttp.MethodPatch, c.opts.headers, c.opts.body)
+}
+
+// Request allows any HTTP method
+func (c *Client) Request(method, url string) (*Response, error) {
+	if url == "" {
+		return nil, ErrEmptyURL
+	}
+
+	return c.call(url, method, c.opts.headers, c.opts.body)
+}
+
+func (c *Client) SendFile(url string) (*Response, error) {
+	if url == "" {
+		return nil, ErrEmptyURL
 	}
 	if len(c.opts.files.Mapper) == 0 {
-		return nil, EmptyFileErr
+		return nil, ErrEmptyFile
 	}
 	bodyBuffer := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuffer)
@@ -242,32 +266,56 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
 
-	for key, value := range headers.cookies.Mapper {
-		req.Header.SetCookie(key, value)
+	// Handle cookies by creating a proper Cookie header
+	if len(headers.cookies.Mapper) > 0 {
+		var cookiePairs []string
+		for key, value := range headers.cookies.Mapper {
+			cookiePairs = append(cookiePairs, fmt.Sprintf("%s=%s", key, value))
+		}
+		if len(cookiePairs) > 0 {
+			req.Header.Set("Cookie", strings.Join(cookiePairs, "; "))
+		}
 	}
 
 	for key, value := range headers.normal.Mapper {
 		req.Header.Set(key, value)
 	}
 
-	if !req.Header.IsGet() {
+	if !req.Header.IsGet() && !req.Header.IsHead() {
 		contentType := string(req.Header.ContentType())
 		switch contentType {
 		case jsonContentType:
 			if body != nil {
 				req.SetBody(body)
 			}
+		case defaultContentType:
+			// For form data, just set the body directly
+			if body != nil {
+				req.SetBody(body)
+			}
 		default:
-			if !strings.Contains(contentType, formContentType) && body != nil {
-				argsMap := make(map[string]interface{})
-				if err := json.Unmarshal(body, &argsMap); err != nil {
-					return nil, err
+			if strings.Contains(contentType, formContentType) {
+				// For multipart form data, set body directly
+				if body != nil {
+					req.SetBody(body)
 				}
-				fastArgs := new(fasthttp.Args)
-				for key, value := range argsMap {
-					fastArgs.Add(key, fmt.Sprintf("%v", value))
+			} else if contentType == "" && body != nil {
+				// If no content type is set and we have body data,
+				// check if it looks like form data or JSON
+				bodyStr := string(body)
+				if strings.Contains(bodyStr, "=") && strings.Contains(bodyStr, "&") {
+					// Looks like form data
+					req.Header.SetContentType(defaultContentType)
+					req.SetBody(body)
+				} else if (strings.HasPrefix(bodyStr, "{") && strings.HasSuffix(bodyStr, "}")) ||
+					(strings.HasPrefix(bodyStr, "[") && strings.HasSuffix(bodyStr, "]")) {
+					// Looks like JSON
+					req.Header.SetContentType(jsonContentType)
+					req.SetBody(body)
+				} else {
+					// Just set the body as-is
+					req.SetBody(body)
 				}
-				req.SetBody(fastArgs.QueryString())
 			} else {
 				req.SetBody(body)
 			}
@@ -381,23 +429,4 @@ type requestOptions struct {
 type requestHeaders struct {
 	normal  RequestHeaders
 	cookies RequestCookies
-}
-
-type RequestOption struct {
-	f func(*requestOptions)
-}
-
-func main2() {
-
-	flag.Parse()
-
-	res, err := NewClient().
-		AddParam("param1", "param1").
-		AddHeader("header1", "header1").
-		AddCookie("cookie1", "cookie1").
-		Get("https://example.com")
-	if err == nil {
-		fmt.Println(string(res.Body))
-	}
-
 }
