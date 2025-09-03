@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/json-iterator/go v1.1.12
 	github.com/quic-go/quic-go v0.54.0
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 	github.com/valyala/fasthttp v1.65.0
 	golang.org/x/net v0.43.0
 )
@@ -17,7 +17,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
-	github.com/spf13/pflag v1.0.7 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
