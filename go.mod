@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/json-iterator/go v1.1.12
 	github.com/quic-go/quic-go v0.57.1
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/valyala/fasthttp v1.68.0
 	golang.org/x/net v0.47.0
 )
