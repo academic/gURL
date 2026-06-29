@@ -6,7 +6,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/quic-go/quic-go v0.60.0
 	github.com/spf13/cobra v1.10.2
-	github.com/valyala/fasthttp v1.71.0
+	github.com/valyala/fasthttp v1.72.0
 	golang.org/x/net v0.56.0
 )
 
