@@ -1,10 +1,10 @@
 module github.com/academic/gURL
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/json-iterator/go v1.1.12
-	github.com/quic-go/quic-go v0.61.0
+	github.com/quic-go/quic-go v0.62.0
 	github.com/spf13/cobra v1.10.2
 	github.com/valyala/fasthttp v1.73.0
 	golang.org/x/net v0.58.0
