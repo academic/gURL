@@ -6,8 +6,8 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/quic-go/quic-go v0.64.1
 	github.com/spf13/cobra v1.10.2
-	github.com/valyala/fasthttp v1.77.0
-	golang.org/x/net v0.61.0
+	github.com/valyala/fasthttp v1.78.0
+	golang.org/x/net v0.62.0
 )
 
 require (
@@ -15,7 +15,7 @@ require (
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/molecule-man/go-brrr v1.3.0 // indirect
+	github.com/molecule-man/go-brrr v1.3.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
