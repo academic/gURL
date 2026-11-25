@@ -7,7 +7,7 @@ require (
 	github.com/quic-go/quic-go v0.65.0
 	github.com/spf13/cobra v1.10.2
 	github.com/valyala/fasthttp v1.80.0
-	golang.org/x/net v0.62.0
+	golang.org/x/net v0.63.0
 )
 
 require (
